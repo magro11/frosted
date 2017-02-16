@@ -198,7 +198,21 @@ class FunctionSignature(object):
 
         filledSlots = set()
         filledKwOnlySlots = set()
+        
+        starargs = None
+        kwargs = None
+        
+        if not (PY3 and PY35_GTE):
+            starargs = call_node.starargs
+            kwargs = call_node.kwargs
+        
         for item, arg in enumerate(call_node.args):
+            if PY3 and PY35_GTE and type(arg) is ast.Starred:
+                    '''from Python 3.5 on, starargs nodes are not contained in the
+                    field 'starargs' of call_node but are contained as ast.Starred type
+                    in the call_node.args tuple. Separated them to keep the 'old' behaviour.'''
+                    starargs = arg
+                    continue
             if item >= len(self.argument_names):
                 if not self.has_var_arg:
                     return reporter.report(messages.TooManyArguments, call_node, name, self.maxArgumentCount())
@@ -206,6 +220,12 @@ class FunctionSignature(object):
             filledSlots.add(item)
 
         for kw in call_node.keywords:
+            if PY3 and PY35_GTE and not kw.arg:
+                    '''from Python 3.5 on, kwargs nodes are not contained in the
+                    field 'kwargs' of call_node but are contained with arg=None
+                    in the call_node.keywords tuple. Separated them to keep the 'old' behaviour.'''
+                    kwargs = kw
+                    continue
             slots = None
             try:
                 argIndex = self.argument_names.index(kw.arg)
@@ -227,9 +247,9 @@ class FunctionSignature(object):
         filledKwOnlySlots.update(range(len(self.kw_only_argument_names) - self.kw_only_default_count,
                                        len(self.kw_only_argument_names)))
 
-        if (len(filledSlots) < len(self.argument_names) and not call_node.starargs and not call_node.kwargs):
+        if (len(filledSlots) < len(self.argument_names) and not starargs and not kwargs):
             return reporter.report(messages.TooFewArguments, call_node, name, self.min_argument_count())
-        if (len(filledKwOnlySlots) < len(self.kw_only_argument_names) and not call_node.kwargs):
+        if (len(filledKwOnlySlots) < len(self.kw_only_argument_names) and not kwargs):
             missing_arguments = [repr(arg) for i, arg in enumerate(self.kw_only_argument_names)
                                 if i not in filledKwOnlySlots]
             return reporter.report(messages.NeedKwOnlyArgument, call_node, name, ', '.join(missing_arguments))
