@@ -32,6 +32,7 @@ from pies.overrides import *
 from frosted import messages
 
 PY34_GTE = sys.version_info >= (3, 4)
+PY35_GTE = sys.version_info >= (3, 5)
 FROSTED_BUILTINS = set(dir(builtins) + ['__file__', '__builtins__', '__debug__', '__name__', 'WindowsError',
                                         '__import__'] +
                        os.environ.get('PYFLAKES_BUILTINS', '').split(','))
